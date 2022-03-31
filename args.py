@@ -1,0 +1,66 @@
+from argparse import ArgumentParser
+from pathlib import Path
+import random
+import torch
+import numpy as np
+
+class Parser(ArgumentParser):
+
+    def __init__(self):
+        super(Parser,self).__init__(description = 'Read')
+        self.add_argument('--model', type=str, default="fc", choices=['fc', 'fourier', 'siren'], help='neural network model to use')
+        self.add_argument('--loss', type=str, default="pinn", choices=['pinn', 'lie'], help='loss function to use')
+
+        # data
+        self.add_argument('--nfield', type=int, default = 5000, help="number of training data")
+        self.add_argument('--nbound', type=int, default = 500, help="number of boundary training data")
+        self.add_argument('--ntest', type=int, default= 500, help="number of training data")
+        self.add_argument('--train-field-batch', type=int, default= 500, help='field batch size for training')
+        self.add_argument('--train-bound-batch', type=int, default= 50, help='boundary batch size for training')
+        self.add_argument('--test-batch', type=int, default = 32, help='batch size for testing')
+
+        # training
+        self.add_argument('--epoch-start', type=int, default=0, help='epoch to start at, will load pre-trained network')
+        self.add_argument('--epochs', type=int, default=10000, help='number of epochs to train')
+        self.add_argument('--lr', type=float, default= 1e-3, help='ADAM learning rate')
+        self.add_argument('--seed', type=int, default=12345, help='manual seed used in PyTorch and Numpy')
+        self.add_argument('--lambda_pde', type=float, default=1.0, help='lambda pde param in lie loss')
+        self.add_argument('--lambda_bound', type=float, default=1.0, help='lambda bndry param in lie loss')
+        self.add_argument('--lambda_lie', type=float, default=1.0, help='lambda lie param in lie loss')
+        self.add_argument('--eps', type=float, default=1e-3, help= 'eps param in lie loss')
+        self.add_argument('--v', type=float, default=50, help="v param in \
+                          convection diffusion eqn.")
+        self.add_argument('--k', type=float, default=1, help="k param in \
+                          convection diffusion eqn.")
+
+        # logging
+        self.add_argument('--plot-freq', type=int, default= 100, help='how many epochs to wait before plotting test output')
+        self.add_argument('--test-freq', type=int, default= 100, help='how many epochs to test the model')
+        self.add_argument('--ckpt-freq', type=int, default=100, help='how many epochs to wait before saving the model')
+        self.add_argument('--notes', type=str, default="", help='notes')
+
+    def parse(self):
+            args = self.parse_args()
+
+            args.run_dir = Path('./outputs') / \
+            f'{args. model}_ntrain{args.nfield}_batch{args.train_field_batch}_{args.loss}'
+
+            if len(args.notes) > 0:
+                folder_name = args.run_dir.name + f'{args.notes}'
+                args.run_dir = args.run_dir.parent / folder_name
+
+            args.ckpt_dir = args.run_dir / "checkpoints"
+            args.pred_dir = args.run_dir / "predictions"
+            for path in (args.run_dir, args.ckpt_dir, args.pred_dir):
+                Path(path).mkdir(parents=True, exist_ok=True)
+
+            # Set random seed
+            if args.seed is None:
+                args.seed = random.randint(1, 10000)
+            random.seed(args.seed)
+            torch.manual_seed(args.seed)
+            np.random.seed(seed=args.seed)
+
+            return args
+
+

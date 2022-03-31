@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import Iterable, Tuple
+from typing import Tuple
 from torch.utils.data import Dataset, DataLoader
 from .pinns_loader import PINNS_Dataloader
 
@@ -61,7 +61,7 @@ class Field1D(Dataset):
     def __init__(self,
         n_examples: int,
     ):
-        x = np.linspace(0, 1, n_examples).reshape(-1,1)
+        x = np.random.rand(n_examples,1)
         self.inputs = torch.Tensor(x)
 
     def __len__(self):
@@ -76,16 +76,15 @@ class Boundary1D(Dataset):
     def __init__(self,
         n_examples: int
     ):
-        u0 = np.repeat(0, n_examples).reshape(-1,1)
-        uL = np.repeat(1, n_examples).reshape(-1,1)
-        self.input1 = torch.Tensor(u0)
-        self.input2 = torch.Tensor(uL)
+        x = np.random.choice([0, 1], n_examples).reshape(-1, 1)
+        self.input = torch.Tensor(x)
+        self.target = torch.Tensor(x)
 
     def __len__(self):
-        return self.input1.size(0)
+        return self.input.size(0)
 
     def __getitem__(self, i: int) -> Tuple[Tensor]:
-        return self.input1[i], self.input2[i]
+        return self.input[i], self.target[i]
 
 class Eval1D(Dataset):
 
@@ -101,7 +100,7 @@ class Eval1D(Dataset):
         xf= np.random.rand(n_field,1)
         uf= soln(xf, v, k)
         # Sampling boundary points
-        xb = np.random.choice([0, 1], n_boundary)
+        xb = np.random.choice([0, 1], n_boundary).reshape(-1, 1)
         ub = xb
         x = np.concatenate((xf, xb), axis=0)
         u = np.concatenate((uf, ub), axis=0)
