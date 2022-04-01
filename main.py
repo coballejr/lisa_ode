@@ -3,6 +3,7 @@ from args import Parser
 from data.loaders import create_training_loader, create_eval_loader
 from models import FullyConnected
 from loss import PINNTrainingLoss, EvalLoss
+from lisa.lie_field_torch import uTranslation
 from viz import plot_prediction
 
 if __name__ == '__main__':
@@ -13,6 +14,19 @@ if __name__ == '__main__':
     # select model
     if args.model == 'fc':
         mod = FullyConnected()
+
+    # define symmetries
+    if args.loss.lower() == 'standard':
+        symms = None
+    elif args.loss.lower() == 'lie':
+        if args.experiment.lower() == 'conv_diff':
+            symms = (uTranslation(),)
+
+        else:
+            raise NotImplementedError('Invalid experiment string.')
+
+    else:
+        raise NotImplementedError('Invalid loss string.')
 
     # define losses
     training_loss_step = PINNTrainingLoss(mod,
@@ -47,8 +61,9 @@ if __name__ == '__main__':
            optim.zero_grad()
 
            # forward
-           loss = training_loss_step(field_data, bound_data)
-           training_loss += loss.detach() / len(training_loader)
+           loss = training_loss_step(field_data, bound_data, symms = symms, eps
+                                    = args.eps)
+           training_loss += loss.detach() / (len(training_loader)*len(symms))
 
            # backward
            loss.backward()

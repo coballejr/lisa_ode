@@ -9,7 +9,10 @@ class Parser(ArgumentParser):
     def __init__(self):
         super(Parser,self).__init__(description = 'Read')
         self.add_argument('--model', type=str, default="fc", choices=['fc', 'fourier', 'siren'], help='neural network model to use')
-        self.add_argument('--loss', type=str, default="pinn", choices=['pinn', 'lie'], help='loss function to use')
+        self.add_argument('--loss', type=str, default="standard",
+                          choices=['standard', 'lie'], help='loss function to use')
+        self.add_argument('--experiment', type=str, default='conv_diff',
+                          choices=['conv_diff'], help='ode to learn')
 
         # data
         self.add_argument('--nfield', type=int, default = 5000, help="number of training data")

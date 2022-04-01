@@ -26,6 +26,15 @@ class LieField:
 
         return xstar, ustar
 
+    def infs_to_np(self):
+        x, u = self.x, self.u
+        xix, etau = self.xix, self.etau
+
+        xix_np = sp.lambdify([x,u], xix, 'numpy')
+        etau_np = sp.lambdify([x,u], etau, 'numpy')
+
+        return xix_np, etau_np
+
 
 # Convection-diffusion continuous symmetries
 v, k = 50, 1
@@ -77,5 +86,17 @@ class X6(LieField):
         xix =  sp.sympify(0)
         etau = sp.sympify(1)
         super(X6, self).__init__(x, u, xix, etau)
+
+if __name__ == '__main__':
+    import numpy as np
+    lf = X5()
+    xix, etau = lf.infs_to_np()
+    input = np.random.rand(5,2)
+    x, u = input[:,0], input[:,1]
+    output_xix = xix(x, u)
+    output_etau = etau(x, u)
+
+    print(output_xix)
+    print(output_etau)
 
 

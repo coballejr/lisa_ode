@@ -1,5 +1,7 @@
 import torch
 from torch.nn import Sequential, Module, Linear, Tanh
+from typing import Tuple
+from lisa.lie_field_torch import LieField
 
 class FullyConnected(Module):
 
@@ -15,8 +17,26 @@ class FullyConnected(Module):
         self.apply(self._init_weights)
         self.dummy_param = torch.nn.Parameter(torch.empty(0))
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor,
+                      symms: Tuple[LieField] = None,
+                      eps: float = 1e-3) -> torch.Tensor:
+
         u = self.mlp(x)
+
+        if symms:
+            u_tup = (u,)
+            for lf in symms:
+                xix, etau = lf.xix, lf.etau
+
+                inf_x = xix(x, u)
+                xstar = x + eps*inf_x
+                Tstar = self.mlp(xstar)
+
+                inf_u = etau(xstar, Tstar)
+                ustar = Tstar - eps*inf_u
+                u_tup += (ustar,)
+            u = torch.cat(u_tup, dim = 0)
+
         return u
 
     def _init_weights(self, m: Module):

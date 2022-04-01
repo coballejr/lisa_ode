@@ -3,6 +3,7 @@ import torch.nn as nn
 from typing import Tuple
 from .grad_graph import GradGraph
 from .convection_diffusion import ConvDiff
+from lisa.lie_field_torch import LieField
 
 Tensor = torch.Tensor
 
@@ -44,9 +45,12 @@ class PINNTrainingLoss:
             inputs.requires_grad=True
         return inputs
 
-    def pde_loss(self, inputs: Tensor):
+    def pde_loss(self, inputs: Tensor,
+                       symms: Tuple[LieField] = None,
+                       eps: float = 1e-3):
+
         x = self.prep_inputs(inputs, grad=True)
-        u = self.model(x)
+        u = self.model(x, symms = symms, eps = eps)
         grads = self.grad_graph.calc_grad(x=x, u=u)
         resid_u = self.pde(grads)
         loss = lossL2(resid_u)
@@ -72,10 +76,12 @@ class PINNTrainingLoss:
     def __call__(self,
         field_points: Tensor,
         boundary_points: Tuple[Tensor],
+        symms: Tuple[LieField],
+        eps: float = 1e-3
     ):
         # Calculate loss components
 
-        e_pde = self.pde_loss(field_points)
+        e_pde = self.pde_loss(inputs = field_points, symms = symms, eps = eps)
         e_boundary = self.boundary_loss(boundary_points[0], boundary_points[1])
 
         return e_pde + e_boundary
