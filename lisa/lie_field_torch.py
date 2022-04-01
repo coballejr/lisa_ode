@@ -14,9 +14,9 @@ class LieField:
 
 # specific symmetry fields
 
-class uTranslation(LieField):
+class Scaling(LieField):
 
     def __init__(self):
-        xix = lambda x,u: torch.zeros_like(x)
-        etau = lambda x,u: torch.ones_like(x)
-        super(uTranslation, self).__init__(xix = xix, etau = etau)
+        xix = lambda x,u: x
+        etau = lambda x,u: -u
+        super(Scaling, self).__init__(xix = xix, etau = etau)

@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from typing import Tuple
 from .grad_graph import GradGraph
-from .convection_diffusion import ConvDiff
+from .seperable import SeperableODE
 from lisa.lie_field_torch import LieField
 
 Tensor = torch.Tensor
@@ -19,25 +19,17 @@ class PINNTrainingLoss:
     def __init__(self,
         model: nn.Module,
         lambda_pde: float = 1.0,
-        lambda_bound: float = 1.0,
-        boundary_type: str = "dirichlet",
-        v: float = 1,
-        k: float = 1
+        lambda_init: float = 1.0,
     ):
 
         self.model = model
         self.grad_graph = GradGraph(['x'], ['u'])
 
-        self.pde = ConvDiff(v, k)
+        self.pde = SeperableODE()
         self.grad_graph.add_pde(self.pde)
 
-        if boundary_type == "periodic":
-            self.boundary_loss = self.boundary_loss_periodic
-        else:
-            self.boundary_loss = self.boundary_loss_dirichlet
-
         self.lambda_pde = lambda_pde
-        self.lambda_bound = lambda_bound
+        self.lambda_init = lambda_init
 
     def prep_inputs(self, inputs:Tensor, grad: bool = False):
         inputs = inputs.to(self.model.device)
@@ -50,41 +42,31 @@ class PINNTrainingLoss:
                        eps: float = 1e-3):
 
         x = self.prep_inputs(inputs, grad=True)
-        u = self.model(x, symms = symms, eps = eps)
+        x,u = self.model(x, symms = symms, eps = eps)
         grads = self.grad_graph.calc_grad(x=x, u=u)
         resid_u = self.pde(grads)
         loss = lossL2(resid_u)
         return self.lambda_pde*loss
 
-    def boundary_loss_periodic(self, inputs1:Tensor, inputs2:Tensor):
-        mse_fnc = nn.MSELoss()
-        inputs1 = self.prep_inputs(inputs1)
-        output1 = self.model(inputs1)
-        inputs2 = self.prep_inputs(inputs2)
-        output2 = self.model(inputs2)
-
-        return self.lambda_bound*mse_fnc(output1, output2)
-
-    def boundary_loss_dirichlet(self, inputs:Tensor, targets:Tensor):
+    def init_loss(self, inputs:Tensor, targets:Tensor):
         inputs  = self.prep_inputs(inputs)
-        outputs = self.model(inputs)
+        _, outputs = self.model(inputs, symms = None)
         targets = targets.to(self.model.device)
         mse_fnc = nn.MSELoss()
 
-        return self.lambda_bound*mse_fnc(outputs, targets)
+        return self.lambda_init*mse_fnc(outputs, targets)
 
     def __call__(self,
         field_points: Tensor,
-        boundary_points: Tuple[Tensor],
+        init_points: Tuple[Tensor],
         symms: Tuple[LieField],
         eps: float = 1e-3
     ):
         # Calculate loss components
-
         e_pde = self.pde_loss(inputs = field_points, symms = symms, eps = eps)
-        e_boundary = self.boundary_loss(boundary_points[0], boundary_points[1])
+        e_init = self.init_loss(init_points[0], init_points[1])
 
-        return e_pde + e_boundary
+        return e_pde + e_init
 
 class EvalLoss:
 
@@ -105,10 +87,7 @@ class EvalLoss:
     ):
         input = input.to(self.model.device)
         target = target.to(self.model.device)
-
-
-
-        u = self.model(input)
+        _, u = self.model(input, symms = None)
         u_error = self.error_fnc(u, target)
 
         return u_error

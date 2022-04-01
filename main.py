@@ -3,7 +3,7 @@ from args import Parser
 from data.loaders import create_training_loader, create_eval_loader
 from models import FullyConnected
 from loss import PINNTrainingLoss, EvalLoss
-from lisa.lie_field_torch import uTranslation
+from lisa.lie_field_torch import Scaling
 from viz import plot_prediction
 
 if __name__ == '__main__':
@@ -19,8 +19,8 @@ if __name__ == '__main__':
     if args.loss.lower() == 'standard':
         symms = None
     elif args.loss.lower() == 'lie':
-        if args.experiment.lower() == 'conv_diff':
-            symms = (uTranslation(),)
+        if args.experiment.lower() == 'seperable':
+            symms = (Scaling(),)
 
         else:
             raise NotImplementedError('Invalid experiment string.')
@@ -31,39 +31,37 @@ if __name__ == '__main__':
     # define losses
     training_loss_step = PINNTrainingLoss(mod,
                                           args.lambda_pde,
-                                          args.lambda_bound,
-                                          v = args.v,
-                                          k = args.k)
+                                          args.lambda_init)
     eval_loss_step = EvalLoss(mod)
 
     # create dataloaders
     training_loader = create_training_loader(args.nfield,
-                                             args.nbound,
+                                             args.ninit,
+                                             args.u0,
                                              args.train_field_batch,
-                                             args.train_bound_batch)
+                                             args.train_init_batch)
     testing_loader = create_eval_loader(args.ntest,
                                         args.ntest//10,
-                                        args.test_batch,
-                                        args.v,
-                                        args.k)
+                                        args.u0,
+                                        args.test_batch)
 
     # set optimizers
     optim = torch.optim.Adam(mod.parameters(), lr=args.lr, weight_decay=1e-6)
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma = 0.999999)
 
     # training loop
+    nsymms = 1 if symms == None else len(symms)
     iteration = 0
     train_losses = []
     eval_losses = []
     for epoch in range(1, args.epochs+1):
         training_loss = 0
-        for mbi, (field_data, bound_data) in enumerate(training_loader):
+        for mbi, (field_data, init_data) in enumerate(training_loader):
            optim.zero_grad()
-
            # forward
-           loss = training_loss_step(field_data, bound_data, symms = symms, eps
+           loss = training_loss_step(field_data, init_data, symms = symms, eps
                                     = args.eps)
-           training_loss += loss.detach() / (len(training_loader)*len(symms))
+           training_loss += loss.detach() / (len(training_loader)*nsymms)
 
            # backward
            loss.backward()
@@ -82,5 +80,5 @@ if __name__ == '__main__':
 
                 eval_losses.append([epoch*len(training_loader), eval_loss.cpu()])
                 print('Epoch {:d}: Validation loss : {:.04f}'.format(epoch, eval_loss.cpu()))
-                plot_prediction(mod, v = args.v, k = args.k, plot_dir =
+                plot_prediction(mod, u0 = args.u0, plot_dir =
                                 args.pred_dir, epoch = epoch)

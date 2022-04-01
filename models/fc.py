@@ -24,6 +24,7 @@ class FullyConnected(Module):
         u = self.mlp(x)
 
         if symms:
+            x_tup = (x,)
             u_tup = (u,)
             for lf in symms:
                 xix, etau = lf.xix, lf.etau
@@ -34,10 +35,12 @@ class FullyConnected(Module):
 
                 inf_u = etau(xstar, Tstar)
                 ustar = Tstar - eps*inf_u
+                x_tup += (xstar,)
                 u_tup += (ustar,)
+            x = torch.cat(x_tup, dim = 0)
             u = torch.cat(u_tup, dim = 0)
 
-        return u
+        return x,u
 
     def _init_weights(self, m: Module):
         if isinstance(m, Linear):

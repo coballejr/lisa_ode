@@ -7,44 +7,42 @@ from .pinns_loader import PINNS_Dataloader
 Tensor = torch.Tensor
 
 def soln(x: np.array,
-         v: float,
-         k: float) -> np.array:
+         u0: float) -> np.array:
 
-    P = v/k
-    u = (1 /(np.exp(P)-1))*(np.exp(P*x)-1)
-
+    c = -1/u0
+    u = -(1 /(x+c))
     return u
 
 def create_training_loader(
     n_field: int,
-    n_boundary: int,
+    n_init: int,
+    u0: float,
     field_batch_size: int,
-    boundary_batch_size: int,
+    init_batch_size: int,
     num_workers: int = 1
 ):
     # Create datasets
     field_dataset = Field1D(n_field)
-    boundary_dataset = Boundary1D(n_boundary)
+    init_dataset = Initial1D(u0,n_init)
 
     data_loader = PINNS_Dataloader(
         field_dataset,
-        boundary_dataset,
+        init_dataset,
         field_batch_size,
-        boundary_batch_size,
+        init_batch_size,
         num_workers = num_workers
     )
     return data_loader
 
 def create_eval_loader(
     n_field: int,
-    n_boundary: int,
+    n_init: int,
+    u0: float,
     batch_size: int,
-    v: float,
-    k: float,
     num_workers: int = 1
 ):
     # Create dataset (combined field and boundary points)
-    dataset = Eval1D(n_field, n_boundary, v, k)
+    dataset = Eval1D(n_field, n_init, u0)
 
     data_loader = DataLoader(
         dataset,
@@ -71,14 +69,16 @@ class Field1D(Dataset):
         return self.inputs[i]
 
 
-class Boundary1D(Dataset):
+class Initial1D(Dataset):
 
     def __init__(self,
+        u0: float,
         n_examples: int
     ):
-        x = np.random.choice([0, 1], n_examples).reshape(-1, 1)
+        x = np.zeros((n_examples,1))
+        u0 = u0*np.ones((n_examples,1))
         self.input = torch.Tensor(x)
-        self.target = torch.Tensor(x)
+        self.target = torch.Tensor(u0)
 
     def __len__(self):
         return self.input.size(0)
@@ -90,18 +90,17 @@ class Eval1D(Dataset):
 
     def __init__(self,
         n_field: int,
-        n_boundary: int,
-        v: float,
-        k: float
+        n_init: int,
+        u0: float
     ):
         super().__init__()
 
         # Sample domain points
         xf= np.random.rand(n_field,1)
-        uf= soln(xf, v, k)
+        uf= soln(xf, u0)
         # Sampling boundary points
-        xb = np.random.choice([0, 1], n_boundary).reshape(-1, 1)
-        ub = xb
+        xb = np.zeros((n_init,1))
+        ub = u0*np.ones((n_init,1))
         x = np.concatenate((xf, xb), axis=0)
         u = np.concatenate((uf, ub), axis=0)
 
