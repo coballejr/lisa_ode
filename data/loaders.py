@@ -10,7 +10,7 @@ def soln(x: np.array,
          u0: float) -> np.array:
 
     c = -1/u0
-    u = -(1 /(x+c))
+    u = -(1 / (x+c))
     return u
 
 def create_training_loader(
@@ -59,7 +59,7 @@ class Field1D(Dataset):
     def __init__(self,
         n_examples: int,
     ):
-        x = np.random.rand(n_examples,1)
+        x = np.random.uniform(0,0.75, (n_examples, 1))
         self.inputs = torch.Tensor(x)
 
     def __len__(self):
@@ -96,7 +96,7 @@ class Eval1D(Dataset):
         super().__init__()
 
         # Sample domain points
-        xf= np.random.rand(n_field,1)
+        xf = np.random.uniform(0,0.75, (n_field, 1))
         uf= soln(xf, u0)
         # Sampling boundary points
         xb = np.zeros((n_init,1))

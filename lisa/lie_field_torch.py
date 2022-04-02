@@ -31,3 +31,12 @@ class Scaling(LieField):
         xix = lambda x,u: x
         etau = lambda x,u: -u
         super(Scaling, self).__init__(xix = xix, etau = etau)
+
+class Translation(LieField):
+
+    def __init__(self):
+        self.X = lambda x, u, eps: x + eps
+        self.U = lambda x, u, eps: u
+        xix = lambda x,u: 1
+        etau = lambda x,u: 0
+        super(Translation, self).__init__(xix = xix, etau = etau)

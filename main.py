@@ -3,7 +3,7 @@ from args import Parser
 from data.loaders import create_training_loader, create_eval_loader
 from models import FullyConnected
 from loss import PINNTrainingLoss, EvalLoss
-from lisa.lie_field_torch import Scaling, Identity
+from lisa.lie_field_torch import Scaling, Identity, Translation
 from viz import plot_prediction
 
 if __name__ == '__main__':
@@ -18,9 +18,16 @@ if __name__ == '__main__':
     # define symmetries
     if args.loss.lower() == 'standard':
         symms = (Identity(),)
-    elif args.loss.lower() == 'lie':
+    elif args.loss.lower() == 'lie_scaling':
         if args.experiment.lower() == 'seperable':
             symms = (Identity(), Scaling())
+
+        else:
+            raise NotImplementedError('Invalid experiment string.')
+
+    elif args.loss.lower() == 'lie_trans':
+        if args.experiment.lower() == 'seperable':
+            symms = (Identity(), Translation())
 
         else:
             raise NotImplementedError('Invalid experiment string.')
