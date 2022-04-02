@@ -1,46 +1,47 @@
 import torch
 from torch.nn import Sequential, Module, Linear, Tanh
-from typing import Tuple
-from lisa.lie_field_torch import LieField
+from lisa.lie_field_torch import LieField, Identity
 
 class FullyConnected(Module):
 
     def __init__(self, hdim: int = 10):
         super(FullyConnected, self).__init__()
         # define mlp
-        self.mlp = Sequential(Linear(1, 32, bias = False), Tanh(),
-                              Linear(32, hdim, bias = False), Tanh(),
-                              Linear(hdim, hdim, bias = False), Tanh(),
-                              Linear(hdim, 1, bias = False)
+        self.mlp = Sequential(Linear(1, 32, bias = True), Tanh(),
+                              Linear(32, hdim, bias = True), Tanh(),
+                              Linear(hdim, hdim, bias = True), Tanh(),
+                              Linear(hdim, 1, bias = True)
                              )
         # Init weights
         self.apply(self._init_weights)
         self.dummy_param = torch.nn.Parameter(torch.empty(0))
 
     def forward(self, x: torch.Tensor,
-                      symms: Tuple[LieField] = None,
+                      symm: LieField = Identity(),
+                      symm_method: str = 'approx',
                       eps: float = 1e-3) -> torch.Tensor:
 
         u = self.mlp(x)
 
-        if symms:
-            x_tup = (x,)
-            u_tup = (u,)
-            for lf in symms:
-                xix, etau = lf.xix, lf.etau
+        if symm_method == 'approx':
+            xix, etau = symm.xix, symm.etau
 
-                inf_x = xix(x, u)
-                xstar = x + eps*inf_x
-                Tstar = self.mlp(xstar)
+            inf_x = xix(x,u)
+            xstar = x + eps*inf_x
 
-                inf_u = etau(xstar, Tstar)
-                ustar = Tstar - eps*inf_u
-                x_tup += (xstar,)
-                u_tup += (ustar,)
-            x = torch.cat(x_tup, dim = 0)
-            u = torch.cat(u_tup, dim = 0)
+            T = self.mlp(xstar)
+            inf_u = etau(xstar, T)
+
+            u = T - eps*inf_u
+
+        elif symm_method == 'full':
+            X, U = symm.X, symm.U
+            xstar = X(x,u, eps)
+            T = self.mlp(xstar)
+            u = U(xstar, T, -eps)
 
         return x,u
+
 
     def _init_weights(self, m: Module):
         if isinstance(m, Linear):

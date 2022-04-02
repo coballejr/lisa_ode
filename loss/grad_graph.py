@@ -64,7 +64,6 @@ class GradGraph(object):
         self.add_grad(*pde_obj.get_grads())
 
     def calc_grad(self, **kwargs):
-
         gcoll = GradCollection(**kwargs)
         # TODO: Updated required var list based on graph
         assert gcoll.valid(self.indp), "Missing independent variables"

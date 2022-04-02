@@ -38,11 +38,12 @@ class PINNTrainingLoss:
         return inputs
 
     def pde_loss(self, inputs: Tensor,
-                       symms: Tuple[LieField] = None,
+                       symm: LieField = None,
+                       symm_method: str = 'approx',
                        eps: float = 1e-3):
 
         x = self.prep_inputs(inputs, grad=True)
-        x,u = self.model(x, symms = symms, eps = eps)
+        x,u = self.model(x, symm = symm, symm_method = symm_method, eps = eps)
         grads = self.grad_graph.calc_grad(x=x, u=u)
         resid_u = self.pde(grads)
         loss = lossL2(resid_u)
@@ -50,7 +51,7 @@ class PINNTrainingLoss:
 
     def init_loss(self, inputs:Tensor, targets:Tensor):
         inputs  = self.prep_inputs(inputs)
-        _, outputs = self.model(inputs, symms = None)
+        _, outputs = self.model(inputs)
         targets = targets.to(self.model.device)
         mse_fnc = nn.MSELoss()
 
@@ -59,11 +60,13 @@ class PINNTrainingLoss:
     def __call__(self,
         field_points: Tensor,
         init_points: Tuple[Tensor],
-        symms: Tuple[LieField],
+        symm: LieField,
+        symm_method: str = 'approx',
         eps: float = 1e-3
     ):
         # Calculate loss components
-        e_pde = self.pde_loss(inputs = field_points, symms = symms, eps = eps)
+        e_pde = self.pde_loss(inputs = field_points, symm = symm, symm_method =
+                              symm_method, eps = eps)
         e_init = self.init_loss(init_points[0], init_points[1])
 
         return e_pde + e_init
@@ -87,7 +90,7 @@ class EvalLoss:
     ):
         input = input.to(self.model.device)
         target = target.to(self.model.device)
-        _, u = self.model(input, symms = None)
+        _, u = self.model(input)
         u_error = self.error_fnc(u, target)
 
         return u_error

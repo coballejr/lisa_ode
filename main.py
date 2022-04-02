@@ -3,7 +3,7 @@ from args import Parser
 from data.loaders import create_training_loader, create_eval_loader
 from models import FullyConnected
 from loss import PINNTrainingLoss, EvalLoss
-from lisa.lie_field_torch import Scaling
+from lisa.lie_field_torch import Scaling, Identity
 from viz import plot_prediction
 
 if __name__ == '__main__':
@@ -17,10 +17,10 @@ if __name__ == '__main__':
 
     # define symmetries
     if args.loss.lower() == 'standard':
-        symms = None
+        symms = (Identity(),)
     elif args.loss.lower() == 'lie':
         if args.experiment.lower() == 'seperable':
-            symms = (Scaling(),)
+            symms = (Identity(), Scaling())
 
         else:
             raise NotImplementedError('Invalid experiment string.')
@@ -50,7 +50,6 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma = 0.999999)
 
     # training loop
-    nsymms = 1 if symms == None else len(symms)
     iteration = 0
     train_losses = []
     eval_losses = []
@@ -59,13 +58,14 @@ if __name__ == '__main__':
         for mbi, (field_data, init_data) in enumerate(training_loader):
            optim.zero_grad()
            # forward
-           loss = training_loss_step(field_data, init_data, symms = symms, eps
-                                    = args.eps)
-           training_loss += loss.detach() / (len(training_loader)*nsymms)
+           for symm in symms:
+                loss = training_loss_step(field_data, init_data, symm = symm,
+                                          symm_method = args.symm_method, eps = args.eps)
+                training_loss += loss.detach() / (len(training_loader)*len(symms))
 
-           # backward
-           loss.backward()
-           optim.step()
+                # backward
+                loss.backward()
+                optim.step()
 
         scheduler.step()
         train_losses.append([epoch*len(training_loader), training_loss.cpu()])
@@ -80,5 +80,5 @@ if __name__ == '__main__':
 
                 eval_losses.append([epoch*len(training_loader), eval_loss.cpu()])
                 print('Epoch {:d}: Validation loss : {:.04f}'.format(epoch, eval_loss.cpu()))
-                plot_prediction(mod, u0 = args.u0, plot_dir =
-                                args.pred_dir, epoch = epoch)
+                plot_prediction(mod, u0 = args.u0, symms = symms, symm_method =
+                                args.symm_method, eps = args.eps, plot_dir = args.pred_dir, epoch = epoch)
