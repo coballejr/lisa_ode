@@ -3,7 +3,8 @@ import torch.nn as nn
 from typing import Tuple
 from .grad_graph import GradGraph
 from .seperable import SeperableODE
-from lisa.lie_field_torch import LieField
+from lisa.lie_field_torch import LieField, Identity, Translation, Scaling
+import math
 
 Tensor = torch.Tensor
 
@@ -94,3 +95,74 @@ class EvalLoss:
         u_error = self.error_fnc(u, target)
 
         return u_error
+
+# equivariance loss
+
+class EquLoss:
+
+    def __init__(self,
+        model: nn.Module,
+        error_type: str = "mse",
+        symm: LieField = Identity(),
+        symm_method: str = 'full'
+    ):
+        self.model = model
+        self.symm = symm
+        self.symm_method = symm_method
+
+        if error_type == "mse":
+            self.error_fnc = nn.MSELoss()
+        else:
+            self.error_fnc = nn.L1Loss()
+
+        if symm == Identity():
+            self.soln = self._soln_id
+        elif symm == Translation():
+            self.soln = self._soln_trans
+        elif symm == Scaling():
+            self.soln = self._soln_scale
+        else:
+            raise NotImplementedError('Unknown symm.')
+
+    @torch.no_grad()
+    def __call__(self,
+        input: Tensor,
+        u0: float,
+        eps: float
+    ):
+
+        input = input.to(self.model.device)
+        _, u = self.model(input, symm = self.symm, symm_method = self.symm_method, eps =
+                         eps)
+        target = self.soln(input, u0, eps)
+        u_error = self.error_fnc(u, target)
+
+        return u_error
+
+    def _soln_id(self, x: Tensor,
+                       u0: float) -> Tensor:
+
+        c = -1/u0
+        u = -(1 / (x+c))
+        return u
+
+    def _soln_trans(self, x: Tensor,
+                          u0: float,
+                          eps: float) -> Tensor:
+
+        c = -1/u0
+        x = x + eps
+        u = -(1 / (x+c))
+        return u
+
+
+    def _soln_scale(self, x: Tensor,
+                          u0: float,
+                          eps: float) -> Tensor:
+        alpha = math.exp(eps)
+        c = -1/u0
+        x = alpha*x
+        u = -(alpha / (x+c))
+        return u
+
+

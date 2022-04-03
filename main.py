@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from args import Parser
 from data.loaders import create_training_loader, create_eval_loader
 from models import FullyConnected
@@ -31,6 +32,15 @@ if __name__ == '__main__':
 
         else:
             raise NotImplementedError('Invalid experiment string.')
+
+    elif args.loss.lower() == 'lie_all':
+        if args.experiment.lower() == 'seperable':
+            symms = (Identity(), Translation(), Scaling())
+
+        else:
+            raise NotImplementedError('Invalid experiment string.')
+
+
 
     else:
         raise NotImplementedError('Invalid loss string.')
@@ -89,3 +99,14 @@ if __name__ == '__main__':
                 print('Epoch {:d}: Validation loss : {:.04f}'.format(epoch, eval_loss.cpu()))
                 plot_prediction(mod, u0 = args.u0, symms = symms, symm_method =
                                 args.symm_method, eps = args.eps, plot_dir = args.pred_dir, epoch = epoch)
+
+         # ==== Checkpoint ====
+        if epoch == 1 or epoch+1 % args.ckpt_freq == 0:
+            file_name = "model_proc{:d}_{:d}.pt".format(0, epoch)
+            torch.save(mod.state_dict(), args.ckpt_dir / file_name)
+
+        # Save validation losses and print execution time
+        np.save(args.run_dir / f"valid_{args.model}_{args.loss}", np.array(eval_losses))
+        np.save(args.run_dir / f"train_{args.model}_{args.loss}", np.array(train_losses))
+        print("Training complete.")
+

@@ -9,12 +9,10 @@ class Parser(ArgumentParser):
     def __init__(self):
         super(Parser,self).__init__(description = 'Read')
         self.add_argument('--model', type=str, default="fc", choices=['fc', 'fourier', 'siren'], help='neural network model to use')
-        self.add_argument('--loss', type=str, default="standard",
-                          choices=['standard', 'lie_scale', 'lie_trans'], help='loss function to use')
+        self.add_argument('--loss', type=str, default="standard",choices=['standard', 'lie_scale', 'lie_trans', 'lie_all'], help='loss function to use')
         self.add_argument('--symm_method', type=str, default='approx',
                           choices=['approx', 'full'], help='apply symms with first-order approx or use full diffeomorphism.')
-        self.add_argument('--experiment', type=str, default='seperable',
-                          choices=['seperable'], help='ode to learn')
+        self.add_argument('--experiment', type=str, default='seperable', choices=['seperable'], help='ode to learn')
 
         # data
         self.add_argument('--nfield', type=int, default = 5000, help="number of training data")
