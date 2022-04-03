@@ -13,7 +13,7 @@ def plot_prediction(
     u0: float = 1.0,
     symms: Tuple[LieField] = (Identity(),),
     symm_method: str = 'approx',
-    eps: float = 1e-3,
+    eps_list: np.array = np.array([0]),
     plot_dir: Path = Path('.'),
     epoch: int = 0
 ):
@@ -23,10 +23,11 @@ def plot_prediction(
     ut = soln(x, u0)
 
     for i, symm in enumerate(symms):
-        symm_label = 'Prediciton' + str(i)
-        _, u = model(x_in, symm, symm_method, eps)
-        u = u.cpu().numpy()
-        plt.plot(x, u, linewidth = 2, label = symm_label)
+        for eps in eps_list:
+            symm_label = 'Prediciton' + str(i) + 'eps' + str(np.round_(eps, 3))
+            _, u = model(x_in, symm, symm_method, eps)
+            u = u.cpu().numpy()
+            plt.plot(x, u, linewidth = 2, label = symm_label)
 
     plt.plot(x, ut, c = 'black', linewidth = 4, label = 'Ground Truth')
     plt.xlim([0, 0.8])

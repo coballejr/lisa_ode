@@ -115,11 +115,11 @@ class EquLoss:
         else:
             self.error_fnc = nn.L1Loss()
 
-        if symm == Identity():
+        if isinstance(symm, Identity):
             self.soln = self._soln_id
-        elif symm == Translation():
+        elif isinstance(symm, Translation):
             self.soln = self._soln_trans
-        elif symm == Scaling():
+        elif isinstance(symm, Scaling):
             self.soln = self._soln_scale
         else:
             raise NotImplementedError('Unknown symm.')
@@ -140,7 +140,8 @@ class EquLoss:
         return u_error
 
     def _soln_id(self, x: Tensor,
-                       u0: float) -> Tensor:
+                       u0: float,
+                       eps:float) -> Tensor:
 
         c = -1/u0
         u = -(1 / (x+c))

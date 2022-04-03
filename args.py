@@ -3,6 +3,7 @@ from pathlib import Path
 import random
 import torch
 import numpy as np
+from typing import Tuple
 
 class Parser(ArgumentParser):
 
@@ -24,12 +25,13 @@ class Parser(ArgumentParser):
 
         # training
         self.add_argument('--epoch-start', type=int, default=0, help='epoch to start at, will load pre-trained network')
-        self.add_argument('--epochs', type=int, default=10000, help='number of epochs to train')
+        self.add_argument('--epochs', type=int, default=2000, help='number of epochs to train')
         self.add_argument('--lr', type=float, default= 1e-3, help='ADAM learning rate')
         self.add_argument('--seed', type=int, default=12345, help='manual seed used in PyTorch and Numpy')
         self.add_argument('--lambda_pde', type=float, default=1.0, help='lambda pde param in lie loss')
         self.add_argument('--lambda_init', type=float, default=1.0, help='lambda bndry param in lie loss')
-        self.add_argument('--eps', type=float, default=1e-3, help= 'eps param in lie loss')
+        self.add_argument('--eps_range', type=Tuple, default=(0,1), help= 'range of epsilon values for lie symms')
+        self.add_argument('--neps', type=int, default=1, help= 'number of lie symmetries to train with')
         self.add_argument('--u0', type=float, default= 1, help="initial value in \
                           seperable ode.")
 

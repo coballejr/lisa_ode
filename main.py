@@ -3,7 +3,7 @@ import numpy as np
 from args import Parser
 from data.loaders import create_training_loader, create_eval_loader
 from models import FullyConnected
-from loss import PINNTrainingLoss, EvalLoss
+from loss import PINNTrainingLoss, EvalLoss, EquLoss
 from lisa.lie_field_torch import Scaling, Identity, Translation
 from viz import plot_prediction
 
@@ -19,9 +19,11 @@ if __name__ == '__main__':
     # define symmetries
     if args.loss.lower() == 'standard':
         symms = (Identity(),)
-    elif args.loss.lower() == 'lie_scaling':
+        equ_test_symm = Identity()
+    elif args.loss.lower() == 'lie_scale':
         if args.experiment.lower() == 'seperable':
             symms = (Identity(), Scaling())
+            equ_test_symm = Scaling()
 
         else:
             raise NotImplementedError('Invalid experiment string.')
@@ -29,6 +31,7 @@ if __name__ == '__main__':
     elif args.loss.lower() == 'lie_trans':
         if args.experiment.lower() == 'seperable':
             symms = (Identity(), Translation())
+            equ_test_symm = Translation()
 
         else:
             raise NotImplementedError('Invalid experiment string.')
@@ -50,6 +53,7 @@ if __name__ == '__main__':
                                           args.lambda_pde,
                                           args.lambda_init)
     eval_loss_step = EvalLoss(mod)
+    equ_loss_step = EquLoss(mod, args.symm_method, equ_test_symm)
 
     # create dataloaders
     training_loader = create_training_loader(args.nfield,
@@ -67,22 +71,25 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.ExponentialLR(optim, gamma = 0.999999)
 
     # training loop
+    eps_list = np.random.uniform(args.eps_range[0], args.eps_range[1], args.neps)
     iteration = 0
     train_losses = []
     eval_losses = []
+    equ_losses = []
     for epoch in range(1, args.epochs+1):
         training_loss = 0
         for mbi, (field_data, init_data) in enumerate(training_loader):
            optim.zero_grad()
            # forward
            for symm in symms:
-                loss = training_loss_step(field_data, init_data, symm = symm,
-                                          symm_method = args.symm_method, eps = args.eps)
-                training_loss += loss.detach() / (len(training_loader)*len(symms))
+               for eps in eps_list:
+                    loss = training_loss_step(field_data, init_data, symm = symm,
+                                              symm_method = args.symm_method, eps = eps)
+                    training_loss += loss.detach() / (len(training_loader)*len(symms))
 
-                # backward
-                loss.backward()
-                optim.step()
+                    # backward
+                    loss.backward()
+                    optim.step()
 
         scheduler.step()
         train_losses.append([epoch*len(training_loader), training_loss.cpu()])
@@ -95,10 +102,16 @@ if __name__ == '__main__':
                     eval_loss0 = eval_loss_step(input, label)
                     eval_loss += eval_loss0 / len(testing_loader)
 
+                    # equivariance loss
+                    eps_loss = 0
+                    for eps in eps_list:
+                        eps_loss += equ_loss_step(input, args.u0, eps) / (len(eps_list)*len(testing_loader))
+
                 eval_losses.append([epoch*len(training_loader), eval_loss.cpu()])
+                equ_losses.append([epoch*len(training_loader), eps_loss.cpu()])
                 print('Epoch {:d}: Validation loss : {:.04f}'.format(epoch, eval_loss.cpu()))
                 plot_prediction(mod, u0 = args.u0, symms = symms, symm_method =
-                                args.symm_method, eps = args.eps, plot_dir = args.pred_dir, epoch = epoch)
+                                args.symm_method, eps_list = eps_list, plot_dir = args.pred_dir, epoch = epoch)
 
          # ==== Checkpoint ====
         if epoch == 1 or epoch+1 % args.ckpt_freq == 0:
@@ -108,5 +121,7 @@ if __name__ == '__main__':
         # Save validation losses and print execution time
         np.save(args.run_dir / f"valid_{args.model}_{args.loss}", np.array(eval_losses))
         np.save(args.run_dir / f"train_{args.model}_{args.loss}", np.array(train_losses))
-        print("Training complete.")
+        np.save(args.run_dir / f"equiv_{args.model}_{args.loss}", np.array(equ_losses))
+
+    print("Training complete.")
 
