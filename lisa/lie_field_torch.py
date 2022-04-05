@@ -23,6 +23,9 @@ class Identity(LieField):
         self.U = lambda x, u, eps: u
         super(Identity, self).__init__(xix = xix, etau = etau)
 
+    def __repr__(self):
+        return 'Identity'
+
 class Scaling(LieField):
 
     def __init__(self):
@@ -32,6 +35,10 @@ class Scaling(LieField):
         etau = lambda x,u: -u
         super(Scaling, self).__init__(xix = xix, etau = etau)
 
+    def __repr__(self):
+        return 'Scaling'
+
+
 class Translation(LieField):
 
     def __init__(self):
@@ -40,3 +47,7 @@ class Translation(LieField):
         xix = lambda x,u: 1
         etau = lambda x,u: 0
         super(Translation, self).__init__(xix = xix, etau = etau)
+
+    def __repr__(self):
+        return 'Translation'
+

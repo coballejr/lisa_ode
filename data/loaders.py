@@ -59,7 +59,7 @@ class Field1D(Dataset):
     def __init__(self,
         n_examples: int,
     ):
-        x = np.random.uniform(0,0.75, (n_examples, 1))
+        x = np.random.uniform(0,0.8, (n_examples, 1))
         self.inputs = torch.Tensor(x)
 
     def __len__(self):
@@ -96,7 +96,7 @@ class Eval1D(Dataset):
         super().__init__()
 
         # Sample domain points
-        xf = np.random.uniform(0,0.75, (n_field, 1))
+        xf = np.random.uniform(0,0.8, (n_field, 1))
         uf= soln(xf, u0)
         # Sampling boundary points
         xb = np.zeros((n_init,1))

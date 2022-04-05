@@ -40,7 +40,7 @@ class FullyConnected(Module):
             T = self.mlp(xstar)
             u = U(xstar, T, -eps)
 
-        return x,u
+        return x, u
 
 
     def _init_weights(self, m: Module):

@@ -11,7 +11,7 @@ class Parser(ArgumentParser):
         super(Parser,self).__init__(description = 'Read')
         self.add_argument('--model', type=str, default="fc", choices=['fc', 'fourier', 'siren'], help='neural network model to use')
         self.add_argument('--loss', type=str, default="standard",choices=['standard', 'lie_scale', 'lie_trans', 'lie_all'], help='loss function to use')
-        self.add_argument('--symm_method', type=str, default='approx',
+        self.add_argument('--symm_method', type=str, default='full',
                           choices=['approx', 'full'], help='apply symms with first-order approx or use full diffeomorphism.')
         self.add_argument('--experiment', type=str, default='seperable', choices=['seperable'], help='ode to learn')
 
@@ -30,10 +30,12 @@ class Parser(ArgumentParser):
         self.add_argument('--seed', type=int, default=12345, help='manual seed used in PyTorch and Numpy')
         self.add_argument('--lambda_pde', type=float, default=1.0, help='lambda pde param in lie loss')
         self.add_argument('--lambda_init', type=float, default=1.0, help='lambda bndry param in lie loss')
-        self.add_argument('--eps_range', type=Tuple, default=(0,1), help= 'range of epsilon values for lie symms')
+        self.add_argument('--eps_range', type=float, nargs=2, default=(-2.5, -0.5), help= 'range of epsilon values for lie symms')
         self.add_argument('--neps', type=int, default=1, help= 'number of lie symmetries to train with')
         self.add_argument('--u0', type=float, default= 1, help="initial value in \
                           seperable ode.")
+        self.add_argument('--test_symm_choice', type = str, default ='translation', choices = ['translation', 'scaling'],
+                          help = 'which equivariance loss for training with both symms.')
 
         # logging
         self.add_argument('--plot-freq', type=int, default= 100, help='how many epochs to wait before plotting test output')

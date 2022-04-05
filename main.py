@@ -39,6 +39,12 @@ if __name__ == '__main__':
     elif args.loss.lower() == 'lie_all':
         if args.experiment.lower() == 'seperable':
             symms = (Identity(), Translation(), Scaling())
+            if args.test_symm_choice == 'translation':
+                equ_test_symm = Translation()
+            elif args.test_symm_choice == 'scaling':
+                equ_test_symm = Scaling()
+            else:
+                raise NotImplementedError('Unknown test symm.')
 
         else:
             raise NotImplementedError('Invalid experiment string.')
@@ -77,6 +83,7 @@ if __name__ == '__main__':
     eval_losses = []
     equ_losses = []
     for epoch in range(1, args.epochs+1):
+        mod.train()
         training_loss = 0
         for mbi, (field_data, init_data) in enumerate(training_loader):
            optim.zero_grad()
@@ -97,6 +104,7 @@ if __name__ == '__main__':
         # validation
         if epoch % args.test_freq == 0:
             with torch.no_grad():
+                mod.eval()
                 eval_loss = 0
                 for mbi, (input, label) in enumerate(testing_loader):
                     eval_loss0 = eval_loss_step(input, label)
